@@ -3,7 +3,7 @@
 Model::Model(){
     translate = QVector3D(0.0f, 0.0f, 0.0f);
     rotAngle = 0.0f;
-    axisOfRotation = QVector3D(1.0f, 1.0f, 1.0f);
+    axisOfRotation = QVector3D(0.0f, 1.0f, 0.0f);
     scalar = 1;
 }
 
@@ -33,11 +33,5 @@ QMatrix4x4 Model::getModel(){
 }
 
 void Model::rotateObject(float theta) {
-    if (rotAngle >= 360.0f) {
-        rotAngle -= 360.0f;
-    }
-    if (rotAngle < 0.0f) {
-        rotAngle += 360.0f;
-    }
-    rotAngle += theta;
+    rotAngle = theta;
 }

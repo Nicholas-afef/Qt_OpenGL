@@ -14,6 +14,26 @@ MyGLWidget::~MyGLWidget(){
     doneCurrent();
 }
 
+void MyGLWidget::loadNewObject(std::string file){
+    makeCurrent();
+    m_funcs->glDeleteVertexArrays(1,&this->vao);
+    m_funcs->glDeleteBuffers(1,&this->vbo);
+    mesh.clear();
+
+    initializeModel(file);
+
+    doneCurrent();
+}
+
+void MyGLWidget::loadNewTexture(std::string file){
+    makeCurrent();
+
+    m_funcs->glDeleteTextures(1,&this->texture);
+    initializeTextures(file);
+
+    doneCurrent();
+}
+
 void MyGLWidget::initializeGL(){
     /* Function called once when the opengl context is created.
      * used to set the function behavior of the rendering context and
@@ -42,9 +62,9 @@ void MyGLWidget::initializeGL(){
     //glCullFace(GL_BACK);
     glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-    initializeModel();
-    initializeShaders();
-    initializeTextures();
+    initializeModel("C:/QtWorkspace/Qt_OpenGL/Assets/low-poly-fox/low-poly-fox-by-pixelmannen.obj");
+    initializeShaders("C:/QtWorkspace/Qt_OpenGL/VertexShader.glsl", "C:/QtWorkspace/Qt_OpenGL/FragmentShader.glsl");
+    initializeTextures("C:/QtWorkspace/Qt_OpenGL/Assets/low-poly-fox/texture.png");
 }
 
 void MyGLWidget::resizeGL(int w, int h)
@@ -82,7 +102,10 @@ void MyGLWidget::paintGL(){
     shaderProgram->setUniformValue("material.shininess", 32.0f);
 
     reshape();
-    m_funcs->glDrawArrays(GL_TRIANGLES, vbo, (GLsizei)mesh.getSize());
+    qDebug("test1");
+    m_funcs->glDrawElements(GL_TRIANGLES,mesh.getVertexSize(), GL_UNSIGNED_INT, nullptr);
+    qDebug("test2");
+    //m_funcs->glDrawArrays(GL_TRIANGLES, mesh.getVertexSize(), (GLsizei)mesh.getVertexSize());
 
     shaderProgram->release();
     //m_funcs->glBindTexture(GL_TEXTURE_2D, 0);
@@ -90,23 +113,28 @@ void MyGLWidget::paintGL(){
 
 void MyGLWidget::reshape() {
     shaderProgram->bind();
+    static bool init;
+    if(!init){
+        viewMatrix.setPosition(mesh.getFirstPosition() - QVector3D(4000.0f, 0.0f, 0.0f));
+        init = true;
+    }
     QMatrix4x4 m = modelMatrix.getModel();
     QMatrix4x4 v = viewMatrix.getView();
     QMatrix4x4 p = perspectiveMatrix.getPerspective(width()/height());
     shaderProgram->setUniformValue("perspectiveMatrix", p);
-    shaderProgram->setUniformValue("viewMatrix", v);
-    shaderProgram->setUniformValue("modelMatrix", m);
+    shaderProgram->setUniformValue("modelViewMatrix", v * m);
+    qDebug("reshape");
 }
 
-void MyGLWidget::initializeShaders(){
+void MyGLWidget::initializeShaders(std::string vertex, std::string fragment){
     shaderProgram = std::make_unique<QOpenGLShaderProgram>();
-    shaderProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, "C:/QtWorkspace/HelloOpenGL/VertexShader.glsl");
-    shaderProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, "C:/QtWorkspace/HelloOpenGL/FragmentShader.glsl");
+    shaderProgram->addShaderFromSourceFile(QOpenGLShader::Vertex, QString::fromStdString(vertex));
+    shaderProgram->addShaderFromSourceFile(QOpenGLShader::Fragment, QString::fromStdString(fragment));
     shaderProgram->link();
 }
 
-void MyGLWidget::initializeTextures(){
-    QImage image("C:/QtWorkspace/HelloOpenGL/assets/CatObj/Cat_diffuse.jpg");
+void MyGLWidget::initializeTextures(std::string textureFile){
+    QImage image(QString::fromStdString(textureFile));
     if (image.isNull()) {
         qCritical() << "Can't load image";
         close();
@@ -121,21 +149,26 @@ void MyGLWidget::initializeTextures(){
     m_funcs->glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void MyGLWidget::initializeModel(){
+void MyGLWidget::initializeModel(std::string file){
     // Initializes our mesh object
     // setup vertex data
     qDebug("loading our mesh");
-    mesh = MeshLoader("C:/QtWorkspace/HelloOpenGL/assets/CatObj/12221_Cat_v1_l3.obj");
+    mesh = MeshLoader(file);
     qDebug("-----Vertex Count----");
-    qDebug(std::to_string(mesh.getSize()).c_str());
+    qDebug(std::to_string(mesh.getVertexSize()).c_str());
     //Create VAO
     m_funcs->glGenVertexArrays(1, &this->vao);
     m_funcs->glBindVertexArray(this->vao);
 
+    //Create EBO
+    m_funcs->glGenBuffers(1,&this->ebo);
+    m_funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    m_funcs->glBufferData(GL_ELEMENT_ARRAY_BUFFER, mesh.getIndexSize() * sizeof(GLuint), mesh.getIndices(), GL_STATIC_DRAW);
+
     //GEN VBO AND BIND AND SEND DATA
     m_funcs->glGenBuffers(1, &this->vbo);
     m_funcs->glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
-    m_funcs->glBufferData(GL_ARRAY_BUFFER, mesh.getSize() * sizeof(Vertex), mesh.getVertices(), GL_STATIC_DRAW);
+    m_funcs->glBufferData(GL_ARRAY_BUFFER, mesh.getVertexSize() * sizeof(Vertex), mesh.getVertices(), GL_STATIC_DRAW);
 
     //Position attribute
     m_funcs->glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (GLvoid*)offsetof(Vertex, position));
@@ -154,49 +187,58 @@ void MyGLWidget::initializeModel(){
     m_funcs->glEnableVertexAttribArray(3);
 
     //BIND VAO 0
-    m_funcs->glBindVertexArray(0);
+    m_funcs->glBindVertexArray(vbo);
 }
 
 //=================SLOTS=======================
 void MyGLWidget::moveForward(){
-    qDebug("forward .5f");
-    viewMatrix.moveForward(10.0f);
-    paintGL();
+    qDebug("forward");
+    viewMatrix.moveForward(100.0f);
+    update();
 }
 
 void MyGLWidget::moveBackward(){
-    qDebug("backward .5f");
-    viewMatrix.moveBackward(10.0f);
-    paintGL();
+    qDebug("backward");
+    viewMatrix.moveBackward(100.0f);
+    update();
 }
 
 void MyGLWidget::moveLeft(){
-    qDebug("left .5f");
+    qDebug("left");
     viewMatrix.moveLeft(10.0f);
-    paintGL();
+    update();
 }
 
 void MyGLWidget::moveRight(){
     qDebug("right .5f");
     viewMatrix.moveRight(10.0f);
-    paintGL();
+    update();
 }
 
 void MyGLWidget::moveUp(){
     qDebug("up .5f");
     viewMatrix.moveUp(10.0f);
-    paintGL();
+    update();
 }
 
 void MyGLWidget::moveDown(){
     qDebug("down .5f");
     viewMatrix.moveDown(10.0f);
-    paintGL();
+    update();
+}
+void MyGLWidget::setAxisOfRotation(int i){
+   if(i == 0){
+       modelMatrix.setAxisOfRotation(QVector3D(1.0f, 0.0f, 0.0f));
+   }
+   else if(i == 1){
+       modelMatrix.setAxisOfRotation(QVector3D(0.0f, 1.0f, 0.0f));
+   }
+   else{
+       modelMatrix.setAxisOfRotation(QVector3D(0.0f, 0.0f, 1.0f));
+   }
 }
 
-void MyGLWidget::lookHorizontal(int theta){
-    viewMatrix.lookHorizontal((float)theta);
-}
-void MyGLWidget::lookVertical(int theta){
-    viewMatrix.lookVertical((float)theta);
+void MyGLWidget::rotateObject(int degrees){
+    modelMatrix.rotateObject((float)degrees);
+    update();
 }

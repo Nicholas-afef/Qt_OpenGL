@@ -19,6 +19,7 @@ struct Vertex{
 class MeshLoader{
 private:
     std::vector<Vertex> vertices;
+    std::vector<GLuint> indices;
 public:
     MeshLoader();
     explicit MeshLoader(const std::string&);
@@ -26,7 +27,10 @@ public:
     void loadFile(const std::string&);
     void clear();
     void* getVertices();
-    size_t getSize() const;
+    void* getIndices();
+    QVector3D getFirstPosition();
+    size_t getVertexSize() const;
+    size_t getIndexSize() const;
 };
 
 #endif // MESHLOADER_H

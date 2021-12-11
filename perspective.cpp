@@ -3,7 +3,7 @@
 Perspective::Perspective(){
     angle = 45.0f;
     nearPlane = 0.1f;
-    farPlane = 300.0f;
+    farPlane = 10000.0f;
 }
 
 void Perspective::setAngle(float theta){

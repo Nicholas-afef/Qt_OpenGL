@@ -55,8 +55,7 @@ void MeshLoader::loadFile(const std::string& file) {
         }
         else if(prefix == "f"){
             int counter = 0;
-            while (ss >> temp_glint)
-            {
+            while (ss >> temp_glint){
                 //Pushing indices into correct arrays
                 if (counter == 0)
                     vertex_pos_indicies.push_back(temp_glint);
@@ -66,17 +65,13 @@ void MeshLoader::loadFile(const std::string& file) {
                     vertex_normal_indicies.push_back(temp_glint);
 
                 //Handling characters
-                if (ss.peek() == '/')
-                {
-                    ++counter;
+                while(ss.peek() == '/'){
                     ss.ignore(1, '/');
                 }
-                else if (ss.peek() == ' ')
-                {
-                    ++counter;
+                while(ss.peek() == ' '){
                     ss.ignore(1, ' ');
                 }
-
+                ++counter;
                 //Reset the counter
                 if (counter > 2)
                     counter = 0;
@@ -84,11 +79,12 @@ void MeshLoader::loadFile(const std::string& file) {
         }
     }
     vertices.resize(vertex_pos_indicies.size(), Vertex());
-    for (size_t i = 0; i < vertices.size(); ++i){
+    for (GLuint i = 0; i < vertices.size(); ++i){
         vertices[i].position = vertex_position[vertex_pos_indicies[i] - 1];
         vertices[i].texture = vertex_texcoord[vertex_texcoord_indicies[i] - 1];
         vertices[i].normal = vertex_normal[vertex_normal_indicies[i] - 1];
         vertices[i].color = QVector3D(1.0f, 1.0f, 1.0f);
+        indices.push_back(i);
     }
     filestream.close();
 }
@@ -102,10 +98,20 @@ void* MeshLoader::getVertices(){
     return vertices.data();
 }
 
-size_t MeshLoader::getSize() const{
+void* MeshLoader::getIndices(){
+    return indices.data();
+}
+
+size_t MeshLoader::getVertexSize() const{
     return this->vertices.size();
 }
 
+size_t MeshLoader::getIndexSize() const{
+    return this->indices.size();
+}
 
+QVector3D MeshLoader::getFirstPosition(){
+    return vertices.front().position;
+}
 
 
